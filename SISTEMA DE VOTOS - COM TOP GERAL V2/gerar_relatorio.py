@@ -70,9 +70,9 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
     fig_panorama = viz.plot_temporal_overview()
     fig_panorama.update_layout(height=700, title="Panorama Eleitoral - Rondônia (2016-2024)")
     
-    # Converter gráficos para HTML
+    # Converter gráficos para HTML (Plotly JS embutido em cada figura — arquivo standalone)
     def fig_to_html(fig):
-        return pio.to_html(fig, full_html=False, include_plotlyjs=False)
+        return pio.to_html(fig, full_html=False, include_plotlyjs=True)
     
     # Gerar relatório de dados
     print("  📋 Processando estatísticas...")
@@ -99,7 +99,6 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🗳️ Análise Eleitoral - Rondônia {ano}</title>
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
