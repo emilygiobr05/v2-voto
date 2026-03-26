@@ -445,26 +445,92 @@
     }
 
     // ── Global pre-aggregated summary ────────────────────────────
-    // Loaded from dados_summary.json (~56 KB) instead of dados_bairros.json (17 MB).
+    // Loaded from dados_summary.json (~56 KB) when available.
+    // Falls back to dados_bairros.json (17 MB) with client-side aggregation.
     // Structure: { filters: { "year|cargo": { votos, candidatos, partidos,
     //   municipios, bairros, top_partidos, by_cargo, top_municipios,
     //   by_ano, top_candidatos } } }
     let SUMMARY = null;
 
-    // ── Load summary data ────────────────────────────────────────
+    // ── Build summary from raw dados_bairros.json (fallback) ─────
+    function buildSummaryFromRaw(raw) {
+        const anos   = [...new Set(Object.values(raw).flatMap(rs => rs.map(r => r[0])))].sort();
+        const cargos = [...new Set(Object.values(raw).flatMap(rs => rs.map(r => r[4])))].sort();
+        const yearOptions  = ['', ...anos.map(String)];
+        const cargoOptions = ['', ...cargos];
+        const filters = {};
+
+        for (const yr of yearOptions) {
+            for (const cg of cargoOptions) {
+                filters[`${yr}|${cg}`] = aggregateRaw(raw, yr || null, cg || null);
+            }
+        }
+        return { filters };
+    }
+
+    function aggregateRaw(raw, yearFilter, cargoFilter) {
+        const byPartido = {}, byCargo = {}, byMuni = {}, byAno = {}, cands = {};
+        let totalVotos = 0;
+        const partidos = new Set(), municipios = new Set(), bairros = new Set(), candSet = new Set();
+
+        for (const [cand, records] of Object.entries(raw)) {
+            let candTotal = 0, candCargo = '', candPartido = '', candMuni = '', candAno = 0;
+            for (const [ano, muni, bairro, votos, cargo, partido] of records) {
+                if (yearFilter  && String(ano) !== yearFilter) continue;
+                if (cargoFilter && cargo !== cargoFilter)      continue;
+                totalVotos += votos;
+                byPartido[partido] = (byPartido[partido] || 0) + votos;
+                byCargo[cargo]     = (byCargo[cargo]     || 0) + votos;
+                byMuni[muni]       = (byMuni[muni]       || 0) + votos;
+                byAno[ano]         = (byAno[ano]         || 0) + votos;
+                partidos.add(partido); municipios.add(muni); bairros.add(bairro); candSet.add(cand);
+                candTotal += votos;
+                if (votos > 0) { candCargo = cargo; candPartido = partido; candMuni = muni; candAno = ano; }
+            }
+            if (candTotal > 0) cands[cand] = { v: candTotal, c: candCargo, p: candPartido, m: candMuni, a: candAno };
+        }
+
+        const topN = (obj, n) => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+        return {
+            votos:          totalVotos,
+            candidatos:     candSet.size,
+            partidos:       partidos.size,
+            municipios:     municipios.size,
+            bairros:        bairros.size,
+            top_partidos:   topN(byPartido, 10),
+            by_cargo:       topN(byCargo,   10),
+            top_municipios: topN(byMuni,    10),
+            by_ano:         Object.entries(byAno).map(([y, v]) => [+y, v]).sort((a, b) => a[0] - b[0]),
+            top_candidatos: Object.entries(cands).sort((a, b) => b[1].v - a[1].v).slice(0, 20),
+        };
+    }
+
+    // ── Load data: fast path (summary) → fallback (raw) ──────────
     async function loadData() {
-        document.getElementById('loading-text').textContent = 'Carregando dashboard…';
+        const el = document.getElementById('loading-text');
+        el.textContent = 'Carregando dashboard…';
         try {
+            // Fast path: pre-aggregated summary (~56 KB)
             const resp = await fetch('dados_summary.json');
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             SUMMARY = await resp.json();
-            applyFilters();
-            document.getElementById('loading-overlay').style.display = 'none';
-            document.getElementById('main-content').style.display = 'block';
-        } catch (err) {
-            document.getElementById('loading-text').textContent =
-                '❌ Erro ao carregar dados: ' + err.message;
+        } catch (_) {
+            // Fallback: load full raw data and aggregate client-side
+            el.textContent = 'Carregando dados eleitorais… (pode levar alguns segundos)';
+            try {
+                const resp2 = await fetch('dados_bairros.json');
+                if (!resp2.ok) throw new Error(`HTTP ${resp2.status}`);
+                const raw = await resp2.json();
+                el.textContent = 'Processando…';
+                SUMMARY = buildSummaryFromRaw(raw);
+            } catch (err2) {
+                el.textContent = '❌ Erro ao carregar dados: ' + err2.message;
+                return;
+            }
         }
+        applyFilters();
+        document.getElementById('loading-overlay').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
     }
 
     // ── Apply filters — instant lookup, no re-processing ─────────
