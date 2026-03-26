@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administração — Dashboard Eleitoral</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+        }
+        .admin-header {
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .admin-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .admin-logo span {
+            font-size: 24px;
+        }
+        .admin-logo h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .admin-nav {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .admin-nav a {
+            color: #8b949e;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .admin-nav a:hover {
+            background: #21262d;
+            color: #e6edf3;
+        }
+        .admin-nav a.active {
+            background: #238636;
+            color: #fff;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #8b949e;
+            font-size: 14px;
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #238636, #3fb950);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #fff;
+        }
+        .btn-logout {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #f85149;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            background: #f85149;
+            color: #fff;
+            border-color: #f85149;
+        }
+        .admin-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+        .admin-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .admin-subtitle {
+            color: #8b949e;
+            font-size: 15px;
+            margin-bottom: 32px;
+        }
+        .admin-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .btn-add {
+            background: linear-gradient(135deg, #238636, #2ea043);
+            border: none;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-add:hover {
+            background: linear-gradient(135deg, #2ea043, #3fb950);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(46, 160, 67, 0.4);
+        }
+        .users-table {
+            width: 100%;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .users-table th,
+        .users-table td {
+            padding: 16px 20px;
+            text-align: left;
+        }
+        .users-table th {
+            background: #21262d;
+            color: #8b949e;
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .users-table td {
+            border-top: 1px solid #21262d;
+            font-size: 14px;
+        }
+        .users-table tr:hover td {
+            background: rgba(88, 166, 255, 0.05);
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .role-badge.admin {
+            background: rgba(136, 87, 255, 0.15);
+            color: #a371f7;
+        }
+        .role-badge.user {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+        }
+        .btn-action {
+            background: none;
+            border: 1px solid #30363d;
+            color: #8b949e;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-right: 8px;
+            transition: all 0.2s;
+        }
+        .btn-action:hover {
+            background: #21262d;
+            color: #e6edf3;
+        }
+        .btn-action.delete:hover {
+            background: rgba(248, 81, 73, 0.15);
+            color: #f85149;
+            border-color: #f85149;
+        }
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 480px;
+            padding: 24px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: #8b949e;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .modal-close:hover {
+            color: #e6edf3;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            color: #c9d1d9;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            color: #e6edf3;
+            font-size: 15px;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #58a6ff;
+            box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+        }
+        .form-select {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            color: #e6edf3;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        .form-select:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .btn-cancel {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-cancel:hover {
+            background: #30363d;
+        }
+        .btn-save {
+            background: linear-gradient(135deg, #238636, #2ea043);
+            border: none;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .btn-save:hover {
+            background: linear-gradient(135deg, #2ea043, #3fb950);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .stat-icon.users {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+        }
+        .stat-icon.admins {
+            background: rgba(136, 87, 255, 0.15);
+            color: #a371f7;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .stat-label {
+            color: #8b949e;
+            font-size: 13px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8b949e;
+        }
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <header class="admin-header">
+        <div class="admin-logo">
+            <span>🗳️</span>
+            <h1>Dashboard Eleitoral</h1>
+        </div>
+        <nav class="admin-nav">
+            <a href="index.html"><i class="fas fa-chart-bar"></i> Dashboard</a>
+            <a href="admin.html" class="active"><i class="fas fa-cog"></i> Administração</a>
+        </nav>
+        <div class="user-info">
+            <div class="user-avatar" id="user-avatar">A</div>
+            <span id="user-name">Admin</span>
+            <button class="btn-logout" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </button>
+        </div>
+    </header>
+    
+    <main class="admin-content">
+        <h2 class="admin-title">Gerenciamento de Usuários</h2>
+        <p class="admin-subtitle">Adicione, edite ou remova usuários do sistema.</p>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon users">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="total-users">0</div>
+                    <div class="stat-label">Total de Usuários</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon admins">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="total-admins">0</div>
+                    <div class="stat-label">Administradores</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="admin-actions">
+            <h3 style="font-size:18px;font-weight:500;">Usuários Cadastrados</h3>
+            <button class="btn-add" onclick="openModal()">
+                <i class="fas fa-plus"></i> Novo Usuário
+            </button>
+        </div>
+        
+        <table class="users-table">
+            <thead>
+                <tr>
+                    <th>Usuário</th>
+                    <th>Nome</th>
+                    <th>Função</th>
+                    <th>Criado em</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="users-tbody">
+            </tbody>
+        </table>
+    </main>
+    
+    <!-- Modal de Adicionar/Editar Usuário -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-title">Novo Usuário</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="user-form" onsubmit="return saveUser(event)">
+                <input type="hidden" id="user-id">
+                <div class="form-group">
+                    <label class="form-label">Nome Completo</label>
+                    <input type="text" id="user-name-input" class="form-input" placeholder="Nome do usuário" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Usuário (login)</label>
+                    <input type="text" id="user-username" class="form-input" placeholder="nome.sobrenome" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Senha</label>
+                    <input type="password" id="user-password" class="form-input" placeholder="Mínimo 6 caracteres">
+                    <small style="color:#8b949e;font-size:12px;margin-top:4px;display:block;">Deixe em branco para manter a senha atual (edição)</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Função</label>
+                    <select id="user-role" class="form-select" required>
+                        <option value="user">Usuário</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Verificar autenticação e permissão
+        function checkAuth() {
+            const session = JSON.parse(localStorage.getItem('dashboard_session') || 'null');
+            if (!session) {
+                window.location.href = 'login.html';
+                return null;
+            }
+            if (session.role !== 'admin') {
+                alert('Acesso negado. Apenas administradores podem acessar esta página.');
+                window.location.href = 'index.html';
+                return null;
+            }
+            return session;
+        }
+        
+        const session = checkAuth();
+        if (session) {
+            document.getElementById('user-avatar').textContent = session.name.charAt(0).toUpperCase();
+            document.getElementById('user-name').textContent = session.name;
+        }
+        
+        function logout() {
+            localStorage.removeItem('dashboard_session');
+            window.location.href = 'login.html';
+        }
+        
+        function loadUsers() {
+            const users = JSON.parse(localStorage.getItem('dashboard_users') || '[]');
+            const tbody = document.getElementById('users-tbody');
+            
+            // Atualizar estatísticas
+            document.getElementById('total-users').textContent = users.length;
+            document.getElementById('total-admins').textContent = users.filter(u => u.role === 'admin').length;
+            
+            if (users.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state">
+                                <i class="fas fa-users"></i>
+                                <p>Nenhum usuário cadastrado</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:32px;height:32px;background:linear-gradient(135deg,#30363d,#21262d);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;">
+                                ${user.name.charAt(0).toUpperCase()}
+                            </div>
+                            ${user.username}
+                        </div>
+                    </td>
+                    <td>${user.name}</td>
+                    <td><span class="role-badge ${user.role}">${user.role === 'admin' ? 'Administrador' : 'Usuário'}</span></td>
+                    <td>${new Date(user.createdAt).toLocaleDateString('pt-BR')}</td>
+                    <td>
+                        <button class="btn-action" onclick="editUser(${user.id})">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        ${user.id !== 1 ? `
+                            <button class="btn-action delete" onclick="deleteUser(${user.id})">
+                                <i class="fas fa-trash"></i> Excluir
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function openModal(userId = null) {
+            document.getElementById('modal-overlay').classList.add('show');
+            document.getElementById('modal-title').textContent = userId ? 'Editar Usuário' : 'Novo Usuário';
+            document.getElementById('user-id').value = userId || '';
+            
+            if (userId) {
+                const users = JSON.parse(localStorage.getItem('dashboard_users') || '[]');
+                const user = users.find(u => u.id === userId);
+                if (user) {
+                    document.getElementById('user-name-input').value = user.name;
+                    document.getElementById('user-username').value = user.username;
+                    document.getElementById('user-password').value = '';
+                    document.getElementById('user-role').value = user.role;
+                }
+            } else {
+                document.getElementById('user-form').reset();
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('show');
+        }
+        
+        function editUser(userId) {
+            openModal(userId);
+        }
+        
+        function deleteUser(userId) {
+            if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+            
+            let users = JSON.parse(localStorage.getItem('dashboard_users') || '[]');
+            users = users.filter(u => u.id !== userId);
+            localStorage.setItem('dashboard_users', JSON.stringify(users));
+            loadUsers();
+        }
+        
+        function saveUser(event) {
+            event.preventDefault();
+            
+            const userId = document.getElementById('user-id').value;
+            const name = document.getElementById('user-name-input').value.trim();
+            const username = document.getElementById('user-username').value.trim();
+            const password = document.getElementById('user-password').value;
+            const role = document.getElementById('user-role').value;
+            
+            let users = JSON.parse(localStorage.getItem('dashboard_users') || '[]');
+            
+            if (userId) {
+                // Editar usuário existente
+                const index = users.findIndex(u => u.id === parseInt(userId));
+                if (index !== -1) {
+                    users[index].name = name;
+                    users[index].username = username;
+                    users[index].role = role;
+                    if (password) {
+                        users[index].password = password;
+                    }
+                }
+            } else {
+                // Verificar se username já existe
+                if (users.some(u => u.username === username)) {
+                    alert('Este nome de usuário já está em uso.');
+                    return false;
+                }
+                
+                // Novo usuário
+                if (password.length < 6) {
+                    alert('A senha deve ter no mínimo 6 caracteres.');
+                    return false;
+                }
+                
+                const newId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
+                users.push({
+                    id: newId,
+                    username,
+                    password,
+                    name,
+                    role,
+                    createdAt: new Date().toISOString()
+                });
+            }
+            
+            localStorage.setItem('dashboard_users', JSON.stringify(users));
+            closeModal();
+            loadUsers();
+            
+            return false;
+        }
+        
+        // Fechar modal ao clicar fora
+        document.getElementById('modal-overlay').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+        
+        // Inicializar
+        loadUsers();
+    </script>
+</body>
+</html>
