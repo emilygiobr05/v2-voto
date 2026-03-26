@@ -7,6 +7,7 @@ Gera um arquivo HTML completo e interativo que pode ser aberto em qualquer naveg
 
 import os
 import sys
+import html as _html
 from pathlib import Path
 from datetime import datetime
 
@@ -88,6 +89,9 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
     
     # Gerar HTML
     print("  🎨 Construindo HTML...")
+    
+    # Alias para escape de HTML (protege contra dados com caracteres especiais)
+    e = _html.escape
     
     html_content = f'''<!DOCTYPE html>
 <html lang="pt-BR">
@@ -483,8 +487,8 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
                     <div class="top-item">
                         <div class="top-rank">{i+1}</div>
                         <div class="top-info">
-                            <div class="top-name">{row['CANDIDATO']}</div>
-                            <div class="top-detail">{row['PARTIDO']} • {row['CARGO']}</div>
+                            <div class="top-name">{e(str(row['CANDIDATO']))}</div>
+                            <div class="top-detail">{e(str(row['PARTIDO']))} • {e(str(row['CARGO']))}</div>
                         </div>
                         <div class="top-value">{int(row['TOTAL_VOTOS']):,}</div>
                     </div>
@@ -510,10 +514,10 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
                             {''.join([f'''
                             <tr>
                                 <td>{i+1}</td>
-                                <td><strong>{row['CANDIDATO']}</strong></td>
-                                <td><span class="badge badge-primary">{row['PARTIDO']}</span></td>
-                                <td>{row['CARGO']}</td>
-                                <td><span class="badge {'badge-success' if 'ELEITO' in str(row['STATUS']) else ''}">{row['STATUS']}</span></td>
+                                <td><strong>{e(str(row['CANDIDATO']))}</strong></td>
+                                <td><span class="badge badge-primary">{e(str(row['PARTIDO']))}</span></td>
+                                <td>{e(str(row['CARGO']))}</td>
+                                <td><span class="badge {'badge-success' if 'ELEITO' in str(row['STATUS']) else ''}">{e(str(row['STATUS']))}</span></td>
                                 <td><strong>{int(row['TOTAL_VOTOS']):,}</strong></td>
                             </tr>
                             ''' for i, row in top_candidatos.head(50).iterrows()])}
@@ -545,7 +549,7 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
                             {''.join([f'''
                             <tr>
                                 <td>{i+1}</td>
-                                <td><strong>{row['PARTIDO']}</strong></td>
+                                <td><strong>{e(str(row['PARTIDO']))}</strong></td>
                                 <td><strong>{int(row['TOTAL_VOTOS']):,}</strong></td>
                                 <td>{int(row['CANDIDATOS'])}</td>
                                 <td><span class="badge badge-success">{int(row['ELEITOS'])}</span></td>
@@ -566,7 +570,7 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
                     <div class="top-item">
                         <div class="top-rank">{i+1}</div>
                         <div class="top-info">
-                            <div class="top-name">{partido}</div>
+                            <div class="top-name">{e(str(partido))}</div>
                             <div class="top-detail">Candidatos eleitos</div>
                         </div>
                         <div class="top-value">{eleitos}</div>
@@ -604,7 +608,7 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
                             {''.join([f'''
                             <tr>
                                 <td>{i+1}</td>
-                                <td><strong>{row['MUNICÍPIO']}</strong></td>
+                                <td><strong>{e(str(row['MUNICÍPIO']))}</strong></td>
                                 <td><strong>{int(row['TOTAL_VOTOS']):,}</strong></td>
                                 <td>{int(row['ELEITORADO']):,}</td>
                                 <td>{int(row['NUM_CANDIDATOS'])}</td>
@@ -708,11 +712,23 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Gerador de Relatório HTML')
     parser.add_argument('--data-dir', type=str, default='.', 
-                       help='Diretório com os arquivos Excel')
+                       help='Diretório com os arquivos de dados')
     parser.add_argument('--output', '-o', type=str, default='relatorio_eleitoral.html',
                        help='Nome do arquivo HTML de saída')
     parser.add_argument('--year', '-y', type=int, default=None,
                        help='Ano específico (padrão: mais recente)')
     
     args = parser.parse_args()
-    generate_html_report(args.data_dir, args.output, args.year)
+    
+    try:
+        generate_html_report(args.data_dir, args.output, args.year)
+    except FileNotFoundError as e:
+        print(f"\n❌ Erro: arquivo não encontrado — {e}")
+        sys.exit(1)
+    except ImportError as e:
+        print(f"\n❌ Dependência não encontrada: {e}")
+        print("   Execute: pip install -r requirements.txt")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n❌ Erro inesperado: {e}")
+        sys.exit(1)

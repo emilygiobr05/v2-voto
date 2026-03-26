@@ -441,11 +441,11 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Usuário (login)</label>
-                    <input type="text" id="user-username" class="form-input" placeholder="nome.sobrenome" required>
+                    <input type="text" id="user-username" class="form-input" placeholder="nome.sobrenome" autocomplete="off" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Senha</label>
-                    <input type="password" id="user-password" class="form-input" placeholder="Mínimo 6 caracteres">
+                    <input type="password" id="user-password" class="form-input" placeholder="Mínimo 6 caracteres" minlength="6" autocomplete="new-password">
                     <small style="color:#8b949e;font-size:12px;margin-top:4px;display:block;">Deixe em branco para manter a senha atual (edição)</small>
                 </div>
                 <div class="form-group">
@@ -466,6 +466,16 @@
     </div>
     
     <script>
+        // Escapar HTML para prevenir XSS ao inserir dados no DOM via innerHTML
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         // Verificar autenticação e permissão
         function checkAuth() {
             const session = JSON.parse(localStorage.getItem('dashboard_session') || 'null');
@@ -519,13 +529,13 @@
                     <td>
                         <div style="display:flex;align-items:center;gap:10px;">
                             <div style="width:32px;height:32px;background:linear-gradient(135deg,#30363d,#21262d);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;">
-                                ${user.name.charAt(0).toUpperCase()}
+                                ${escapeHtml(user.name.charAt(0).toUpperCase())}
                             </div>
-                            ${user.username}
+                            ${escapeHtml(user.username)}
                         </div>
                     </td>
-                    <td>${user.name}</td>
-                    <td><span class="role-badge ${user.role}">${user.role === 'admin' ? 'Administrador' : 'Usuário'}</span></td>
+                    <td>${escapeHtml(user.name)}</td>
+                    <td><span class="role-badge ${user.role === 'admin' ? 'admin' : 'user'}">${user.role === 'admin' ? 'Administrador' : 'Usuário'}</span></td>
                     <td>${new Date(user.createdAt).toLocaleDateString('pt-BR')}</td>
                     <td>
                         <button class="btn-action" onclick="editUser(${user.id})">
@@ -633,6 +643,11 @@
         // Fechar modal ao clicar fora
         document.getElementById('modal-overlay').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
+        });
+        
+        // Fechar modal com tecla Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
         });
         
         // Inicializar

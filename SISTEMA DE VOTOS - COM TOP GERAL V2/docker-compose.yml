@@ -19,12 +19,14 @@ services:
       start_period: 40s
 
   # Opcional: Nginx como proxy reverso
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - web
-    restart: unless-stopped
+  # Requer nginx.conf no diretório raiz antes de habilitar.
+  # nginx:
+  #   image: nginx:alpine
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     web:
+  #       condition: service_healthy
+  #   restart: unless-stopped

@@ -15,6 +15,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user for security
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+
 # Copy requirements first for caching
 COPY requirements.txt .
 
@@ -22,8 +25,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy application code and set ownership
+COPY --chown=appuser:appgroup . .
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 8050

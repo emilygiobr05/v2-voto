@@ -10,7 +10,13 @@ from pathlib import Path
 # Adicionar diretório src ao path
 sys.path.insert(0, str(Path(__file__).parent / 'src'))
 
-from src.dashboard import create_dashboard
+try:
+    from src.dashboard import create_dashboard
+except ImportError as e:
+    print(f"❌ Erro ao importar módulo: {e}")
+    print("   Verifique se os arquivos em src/ estão presentes.")
+    print("   Execute: pip install -r requirements.txt")
+    sys.exit(1)
 
 # Criar aplicação
 app = create_dashboard('.')
