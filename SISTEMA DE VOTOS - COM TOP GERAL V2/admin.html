@@ -502,6 +502,12 @@
             window.location.href = 'login.html';
         }
         
+        function roleInfo(role) {
+            return role === 'admin'
+                ? { cls: 'admin', label: 'Administrador' }
+                : { cls: 'user',  label: 'Usuário' };
+        }
+
         function loadUsers() {
             const users = JSON.parse(localStorage.getItem('dashboard_users') || '[]');
             const tbody = document.getElementById('users-tbody');
@@ -535,7 +541,7 @@
                         </div>
                     </td>
                     <td>${escapeHtml(user.name)}</td>
-                    <td><span class="role-badge ${user.role === 'admin' ? 'admin' : 'user'}">${user.role === 'admin' ? 'Administrador' : 'Usuário'}</span></td>
+                    <td><span class="role-badge ${roleInfo(user.role).cls}">${roleInfo(user.role).label}</span></td>
                     <td>${new Date(user.createdAt).toLocaleDateString('pt-BR')}</td>
                     <td>
                         <button class="btn-action" onclick="editUser(${user.id})">

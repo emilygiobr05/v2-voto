@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — Sistema Eleitoral Rondônia</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        .admin-header {
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .admin-logo { display: flex; align-items: center; gap: 12px; }
+        .admin-logo span { font-size: 24px; }
+        .admin-logo h1 { font-size: 18px; font-weight: 600; }
+        .admin-nav { display: flex; align-items: center; gap: 16px; }
+        .admin-nav a {
+            color: #8b949e;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .admin-nav a:hover { background: #21262d; color: #e6edf3; }
+        .admin-nav a.active { background: #238636; color: #fff; }
+        .user-info { display: flex; align-items: center; gap: 12px; color: #8b949e; font-size: 14px; }
+        .user-avatar {
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg, #238636, #3fb950);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 600; color: #fff;
+        }
+        .btn-logout {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #f85149;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex; align-items: center; gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover { background: #f85149; color: #fff; border-color: #f85149; }
+
+        /* ── Main content ── */
+        .main-content { max-width: 1300px; margin: 0 auto; padding: 32px 24px; }
+
+        /* ── Loading overlay ── */
+        #loading-overlay {
+            position: fixed; inset: 0;
+            background: #0d1117;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 999;
+            gap: 20px;
+        }
+        .spinner {
+            width: 48px; height: 48px;
+            border: 4px solid #21262d;
+            border-top-color: #238636;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loading-overlay p { color: #8b949e; font-size: 14px; }
+
+        /* ── Filters ── */
+        .filters-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 28px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            padding: 16px 20px;
+        }
+        .filter-label { color: #8b949e; font-size: 13px; font-weight: 500; white-space: nowrap; }
+        .filter-select {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #e6edf3;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .filter-select:focus { outline: none; border-color: #58a6ff; }
+
+        /* ── Stats cards ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .stat-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: border-color 0.2s;
+        }
+        .stat-card:hover { border-color: #58a6ff33; }
+        .stat-icon {
+            width: 48px; height: 48px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .si-blue  { background: rgba(88,166,255,0.15); color: #58a6ff; }
+        .si-green { background: rgba(63,185,80,0.15);  color: #3fb950; }
+        .si-orange{ background: rgba(255,166,87,0.15); color: #ffa657; }
+        .si-purple{ background: rgba(163,113,247,0.15);color: #a371f7; }
+        .si-red   { background: rgba(248,81,73,0.15);  color: #f85149; }
+        .stat-value { font-size: 26px; font-weight: 700; }
+        .stat-label { color: #8b949e; font-size: 13px; margin-top: 2px; }
+
+        /* ── Section cards ── */
+        .section-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e6edf3;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title i { color: #58a6ff; }
+
+        /* ── Charts grid ── */
+        .charts-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .chart-wrapper { position: relative; height: 320px; }
+
+        /* ── Top candidates table ── */
+        .top-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .top-table th, .top-table td {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 14px;
+        }
+        .top-table th {
+            background: #21262d;
+            color: #8b949e;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .top-table th:first-child { border-radius: 8px 0 0 8px; }
+        .top-table th:last-child  { border-radius: 0 8px 8px 0; }
+        .top-table td { border-top: 1px solid #21262d; }
+        .top-table tr:hover td { background: rgba(88,166,255,0.04); }
+        .rank-badge {
+            display: inline-flex;
+            width: 28px; height: 28px;
+            background: #21262d;
+            border-radius: 50%;
+            align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700;
+            color: #8b949e;
+        }
+        .rank-badge.gold   { background: rgba(255,215,0,0.15);  color: #ffd700; }
+        .rank-badge.silver { background: rgba(192,192,192,0.15);color: #c0c0c0; }
+        .rank-badge.bronze { background: rgba(205,127,50,0.15); color: #cd7f32; }
+        .badge-cargo {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            background: rgba(88,166,255,0.15);
+            color: #58a6ff;
+        }
+        .badge-partido {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            background: rgba(163,113,247,0.15);
+            color: #a371f7;
+        }
+        .vote-bar-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .vote-bar-bg {
+            flex: 1;
+            height: 6px;
+            background: #21262d;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .vote-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #238636, #3fb950);
+            border-radius: 3px;
+        }
+        .vote-num { font-weight: 600; white-space: nowrap; font-size: 13px; color: #3fb950; }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .admin-header { flex-wrap: wrap; gap: 12px; }
+            .admin-nav { display: none; }
+            .charts-grid-2 { grid-template-columns: 1fr; }
+            .chart-wrapper { height: 260px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <p id="loading-text">Carregando dados eleitorais…</p>
+</div>
+
+<!-- Header -->
+<header class="admin-header">
+    <div class="admin-logo">
+        <span>🗳️</span>
+        <h1>Dashboard Eleitoral</h1>
+    </div>
+    <nav class="admin-nav">
+        <a href="index.html" class="active"><i class="fas fa-chart-bar"></i> Dashboard</a>
+        <a href="admin.html"><i class="fas fa-cog"></i> Administração</a>
+    </nav>
+    <div class="user-info">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <span id="user-name">Admin</span>
+        <button class="btn-logout" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i> Sair
+        </button>
+    </div>
+</header>
+
+<!-- Main -->
+<main class="main-content" id="main-content" style="display:none;">
+
+    <!-- Filters -->
+    <div class="filters-bar">
+        <span class="filter-label"><i class="fas fa-filter"></i> Filtros:</span>
+        <select class="filter-select" id="filter-year" onchange="applyFilters()">
+            <option value="">Todos os anos</option>
+            <option value="2016">2016</option>
+            <option value="2018">2018</option>
+            <option value="2020">2020</option>
+            <option value="2022">2022</option>
+            <option value="2024">2024</option>
+        </select>
+        <select class="filter-select" id="filter-cargo" onchange="applyFilters()">
+            <option value="">Todos os cargos</option>
+            <option value="Prefeito">Prefeito</option>
+            <option value="Vereador">Vereador</option>
+            <option value="Governador">Governador</option>
+            <option value="Senador">Senador</option>
+            <option value="Deputado Federal">Deputado Federal</option>
+            <option value="Deputado Estadual">Deputado Estadual</option>
+        </select>
+    </div>
+
+    <!-- Stats cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon si-blue"><i class="fas fa-vote-yea"></i></div>
+            <div>
+                <div class="stat-value" id="stat-votos">—</div>
+                <div class="stat-label">Total de Votos</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon si-green"><i class="fas fa-user-tie"></i></div>
+            <div>
+                <div class="stat-value" id="stat-candidatos">—</div>
+                <div class="stat-label">Candidatos</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon si-purple"><i class="fas fa-landmark"></i></div>
+            <div>
+                <div class="stat-value" id="stat-partidos">—</div>
+                <div class="stat-label">Partidos</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon si-orange"><i class="fas fa-city"></i></div>
+            <div>
+                <div class="stat-value" id="stat-municipios">—</div>
+                <div class="stat-label">Municípios</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon si-red"><i class="fas fa-map-marker-alt"></i></div>
+            <div>
+                <div class="stat-value" id="stat-bairros">—</div>
+                <div class="stat-label">Localidades</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts row 1 -->
+    <div class="charts-grid-2">
+        <div class="section-card">
+            <h2 class="section-title"><i class="fas fa-chart-bar"></i> Votos por Partido (Top 10)</h2>
+            <div class="chart-wrapper">
+                <canvas id="chart-partidos"></canvas>
+            </div>
+        </div>
+        <div class="section-card">
+            <h2 class="section-title"><i class="fas fa-chart-pie"></i> Votos por Cargo</h2>
+            <div class="chart-wrapper">
+                <canvas id="chart-cargos"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts row 2 -->
+    <div class="charts-grid-2">
+        <div class="section-card">
+            <h2 class="section-title"><i class="fas fa-map-marked-alt"></i> Votos por Município (Top 10)</h2>
+            <div class="chart-wrapper">
+                <canvas id="chart-municipios"></canvas>
+            </div>
+        </div>
+        <div class="section-card">
+            <h2 class="section-title"><i class="fas fa-chart-line"></i> Evolução de Votos por Ano</h2>
+            <div class="chart-wrapper">
+                <canvas id="chart-anos"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top candidates table -->
+    <div class="section-card">
+        <h2 class="section-title"><i class="fas fa-medal"></i> Top 20 Candidatos Mais Votados</h2>
+        <div style="overflow-x:auto;">
+            <table class="top-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Candidato</th>
+                        <th>Partido</th>
+                        <th>Cargo</th>
+                        <th>Município</th>
+                        <th>Ano</th>
+                        <th>Votos</th>
+                    </tr>
+                </thead>
+                <tbody id="top-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+</main>
+
+<script>
+    // ── Auth check ──────────────────────────────────────────────
+    const session = JSON.parse(localStorage.getItem('dashboard_session') || 'null');
+    if (!session) {
+        window.location.href = 'login.html';
+    } else {
+        document.getElementById('user-avatar').textContent = session.name.charAt(0).toUpperCase();
+        document.getElementById('user-name').textContent = session.name;
+    }
+
+    function logout() {
+        localStorage.removeItem('dashboard_session');
+        window.location.href = 'login.html';
+    }
+
+    // ── Palette ─────────────────────────────────────────────────
+    const COLORS = [
+        '#58a6ff','#3fb950','#ffa657','#a371f7','#f85149',
+        '#79c0ff','#56d364','#ffb77a','#d2a8ff','#ff7b72',
+        '#39d353','#e3b341','#ff6e96','#4dc8a3','#e8912d'
+    ];
+
+    // ── Chart instances ──────────────────────────────────────────
+    let charts = {};
+
+    function destroyChart(id) {
+        if (charts[id]) { charts[id].destroy(); charts[id] = null; }
+    }
+
+    Chart.defaults.color = '#8b949e';
+    Chart.defaults.borderColor = '#21262d';
+    Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+    // ── Escape HTML ──────────────────────────────────────────────
+    function esc(s) {
+        return String(s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    // ── Number formatter ────────────────────────────────────────
+    function fmt(n) {
+        return Number(n).toLocaleString('pt-BR');
+    }
+
+    // ── Global data ──────────────────────────────────────────────
+    let RAW = null; // { candidato: [[ano,muni,bairro,votos,cargo,partido], ...], ... }
+
+    // ── Load data ────────────────────────────────────────────────
+    async function loadData() {
+        document.getElementById('loading-text').textContent = 'Carregando dados eleitorais… (pode levar alguns segundos)';
+        try {
+            const resp = await fetch('dados_bairros.json');
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            RAW = await resp.json();
+            document.getElementById('loading-text').textContent = 'Processando…';
+            applyFilters();
+            document.getElementById('loading-overlay').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+        } catch (err) {
+            document.getElementById('loading-text').textContent =
+                '❌ Erro ao carregar dados: ' + err.message;
+        }
+    }
+
+    // ── Aggregate data for current filters ───────────────────────
+    function aggregate(yearFilter, cargoFilter) {
+        const byPartido  = {};
+        const byCargo    = {};
+        const byMuni     = {};
+        const byAno      = {};
+        const candidatos = {}; // candidato -> {votos, cargo, partido, muni, ano}
+        let totalVotos   = 0;
+        const partidos   = new Set();
+        const municipios = new Set();
+        const bairros    = new Set();
+        const candSet    = new Set();
+
+        for (const [cand, records] of Object.entries(RAW)) {
+            let candTotal = 0;
+            let candCargo = '', candPartido = '', candMuni = '', candAno = 0;
+
+            for (const r of records) {
+                const [ano, muni, bairro, votos, cargo, partido] = r;
+
+                if (yearFilter  && String(ano) !== yearFilter)  continue;
+                if (cargoFilter && cargo !== cargoFilter)        continue;
+
+                totalVotos += votos;
+                byPartido[partido]  = (byPartido[partido]  || 0) + votos;
+                byCargo[cargo]      = (byCargo[cargo]      || 0) + votos;
+                byMuni[muni]        = (byMuni[muni]        || 0) + votos;
+                byAno[ano]          = (byAno[ano]          || 0) + votos;
+                partidos.add(partido);
+                municipios.add(muni);
+                bairros.add(bairro);
+                candSet.add(cand);
+
+                candTotal += votos;
+                if (votos > 0) {
+                    candCargo   = cargo;
+                    candPartido = partido;
+                    if (!candMuni || votos > (candidatos[cand]?.votos || 0)) {
+                        candMuni = muni;
+                        candAno  = ano;
+                    }
+                }
+            }
+
+            if (candTotal > 0) {
+                candidatos[cand] = { votos: candTotal, cargo: candCargo, partido: candPartido, muni: candMuni, ano: candAno };
+            }
+        }
+
+        return { byPartido, byCargo, byMuni, byAno, candidatos,
+                 totalVotos, partidos, municipios, bairros, candSet };
+    }
+
+    // ── Render all ───────────────────────────────────────────────
+    function applyFilters() {
+        if (!RAW) return;
+        const yearFilter  = document.getElementById('filter-year').value;
+        const cargoFilter = document.getElementById('filter-cargo').value;
+
+        const d = aggregate(yearFilter, cargoFilter);
+
+        // Stats cards
+        document.getElementById('stat-votos').textContent      = fmt(d.totalVotos);
+        document.getElementById('stat-candidatos').textContent = fmt(d.candSet.size);
+        document.getElementById('stat-partidos').textContent   = d.partidos.size;
+        document.getElementById('stat-municipios').textContent = d.municipios.size;
+        document.getElementById('stat-bairros').textContent    = fmt(d.bairros.size);
+
+        renderPartidos(d.byPartido);
+        renderCargos(d.byCargo);
+        renderMunicipios(d.byMuni);
+        renderAnos(d.byAno, yearFilter);
+        renderTopCandidatos(d.candidatos, d.totalVotos);
+    }
+
+    function top(obj, n) {
+        return Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+    }
+
+    // ── Partidos bar chart ────────────────────────────────────────
+    function renderPartidos(byPartido) {
+        const data = top(byPartido, 10);
+        destroyChart('partidos');
+        const ctx = document.getElementById('chart-partidos').getContext('2d');
+        charts.partidos = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d[0]),
+                datasets: [{
+                    label: 'Votos',
+                    data: data.map(d => d[1]),
+                    backgroundColor: COLORS.slice(0, data.length),
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: {
+                    callbacks: { label: ctx => ' ' + fmt(ctx.raw) + ' votos' }
+                }},
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { ticks: { callback: v => fmt(v) } }
+                }
+            }
+        });
+    }
+
+    // ── Cargos doughnut chart ─────────────────────────────────────
+    function renderCargos(byCargo) {
+        const data = top(byCargo, 10);
+        destroyChart('cargos');
+        const ctx = document.getElementById('chart-cargos').getContext('2d');
+        charts.cargos = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.map(d => d[0]),
+                datasets: [{
+                    data: data.map(d => d[1]),
+                    backgroundColor: COLORS.slice(0, data.length),
+                    borderColor: '#161b22',
+                    borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { boxWidth: 12, padding: 12 } },
+                    tooltip: { callbacks: { label: ctx => ' ' + fmt(ctx.raw) + ' votos' } }
+                },
+                cutout: '60%'
+            }
+        });
+    }
+
+    // ── Municípios bar chart ──────────────────────────────────────
+    function renderMunicipios(byMuni) {
+        const data = top(byMuni, 10);
+        destroyChart('municipios');
+        const ctx = document.getElementById('chart-municipios').getContext('2d');
+        charts.municipios = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.map(d => d[0]),
+                datasets: [{
+                    label: 'Votos',
+                    data: data.map(d => d[1]),
+                    backgroundColor: COLORS.slice(5, 5 + data.length),
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false }, tooltip: {
+                    callbacks: { label: ctx => ' ' + fmt(ctx.raw) + ' votos' }
+                }},
+                scales: {
+                    x: { ticks: { callback: v => fmt(v) } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // ── Evolução por ano line chart ───────────────────────────────
+    function renderAnos(byAno, yearFilter) {
+        const allYears = [2016, 2018, 2020, 2022, 2024];
+        destroyChart('anos');
+        const ctx = document.getElementById('chart-anos').getContext('2d');
+
+        if (yearFilter) {
+            // Quando um ano específico está selecionado, mostrar apenas aquele ano como barra
+            const val = byAno[parseInt(yearFilter)] || 0;
+            charts.anos = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [yearFilter],
+                    datasets: [{
+                        label: 'Votos',
+                        data: [val],
+                        backgroundColor: '#238636',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: {
+                        callbacks: { label: ctx => ' ' + fmt(ctx.raw) + ' votos' }
+                    }},
+                    scales: { y: { ticks: { callback: v => fmt(v) } } }
+                }
+            });
+            return;
+        }
+
+        const vals = allYears.map(y => byAno[y] || 0);
+        charts.anos = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: allYears,
+                datasets: [{
+                    label: 'Total de Votos',
+                    data: vals,
+                    borderColor: '#3fb950',
+                    backgroundColor: 'rgba(63,185,80,0.1)',
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#3fb950',
+                    fill: true,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: {
+                    callbacks: { label: ctx => ' ' + fmt(ctx.raw) + ' votos' }
+                }},
+                scales: { y: { ticks: { callback: v => fmt(v) } } }
+            }
+        });
+    }
+
+    // ── Top candidatos table ──────────────────────────────────────
+    function renderTopCandidatos(candidatos, totalVotos) {
+        const sorted = Object.entries(candidatos)
+            .sort((a, b) => b[1].votos - a[1].votos)
+            .slice(0, 20);
+
+        const maxVotos = sorted.length > 0 ? sorted[0][1].votos : 1;
+        const tbody = document.getElementById('top-tbody');
+
+        tbody.innerHTML = sorted.map(([name, info], i) => {
+            const rank = i + 1;
+            const cls  = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
+            const pct  = Math.round((info.votos / maxVotos) * 100);
+            return `<tr>
+                <td><span class="rank-badge ${cls}">${rank}</span></td>
+                <td><strong>${esc(name)}</strong></td>
+                <td><span class="badge-partido">${esc(info.partido)}</span></td>
+                <td><span class="badge-cargo">${esc(info.cargo)}</span></td>
+                <td>${esc(info.muni)}</td>
+                <td>${info.ano || '—'}</td>
+                <td>
+                    <div class="vote-bar-wrap">
+                        <div class="vote-bar-bg">
+                            <div class="vote-bar-fill" style="width:${pct}%"></div>
+                        </div>
+                        <span class="vote-num">${fmt(info.votos)}</span>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        if (sorted.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#8b949e;">
+                Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
+        }
+    }
+
+    // ── Kick off ─────────────────────────────────────────────────
+    loadData();
+</script>
+</body>
+</html>

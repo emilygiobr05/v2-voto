@@ -7,7 +7,7 @@ Gera um arquivo HTML completo e interativo que pode ser aberto em qualquer naveg
 
 import os
 import sys
-import html as _html
+import html as html_lib
 from pathlib import Path
 from datetime import datetime
 
@@ -91,7 +91,7 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
     print("  🎨 Construindo HTML...")
     
     # Alias para escape de HTML (protege contra dados com caracteres especiais)
-    e = _html.escape
+    esc = html_lib.escape
     
     html_content = f'''<!DOCTYPE html>
 <html lang="pt-BR">
@@ -487,8 +487,8 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
                     <div class="top-item">
                         <div class="top-rank">{i+1}</div>
                         <div class="top-info">
-                            <div class="top-name">{e(str(row['CANDIDATO']))}</div>
-                            <div class="top-detail">{e(str(row['PARTIDO']))} • {e(str(row['CARGO']))}</div>
+                            <div class="top-name">{esc(str(row['CANDIDATO']))}</div>
+                            <div class="top-detail">{esc(str(row['PARTIDO']))} • {esc(str(row['CARGO']))}</div>
                         </div>
                         <div class="top-value">{int(row['TOTAL_VOTOS']):,}</div>
                     </div>
@@ -514,10 +514,10 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
                             {''.join([f'''
                             <tr>
                                 <td>{i+1}</td>
-                                <td><strong>{e(str(row['CANDIDATO']))}</strong></td>
-                                <td><span class="badge badge-primary">{e(str(row['PARTIDO']))}</span></td>
-                                <td>{e(str(row['CARGO']))}</td>
-                                <td><span class="badge {'badge-success' if 'ELEITO' in str(row['STATUS']) else ''}">{e(str(row['STATUS']))}</span></td>
+                                <td><strong>{esc(str(row['CANDIDATO']))}</strong></td>
+                                <td><span class="badge badge-primary">{esc(str(row['PARTIDO']))}</span></td>
+                                <td>{esc(str(row['CARGO']))}</td>
+                                <td><span class="badge {'badge-success' if 'ELEITO' in str(row['STATUS']) else ''}">{esc(str(row['STATUS']))}</span></td>
                                 <td><strong>{int(row['TOTAL_VOTOS']):,}</strong></td>
                             </tr>
                             ''' for i, row in top_candidatos.head(50).iterrows()])}
@@ -549,7 +549,7 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
                             {''.join([f'''
                             <tr>
                                 <td>{i+1}</td>
-                                <td><strong>{e(str(row['PARTIDO']))}</strong></td>
+                                <td><strong>{esc(str(row['PARTIDO']))}</strong></td>
                                 <td><strong>{int(row['TOTAL_VOTOS']):,}</strong></td>
                                 <td>{int(row['CANDIDATOS'])}</td>
                                 <td><span class="badge badge-success">{int(row['ELEITOS'])}</span></td>
@@ -570,7 +570,7 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
                     <div class="top-item">
                         <div class="top-rank">{i+1}</div>
                         <div class="top-info">
-                            <div class="top-name">{e(str(partido))}</div>
+                            <div class="top-name">{esc(str(partido))}</div>
                             <div class="top-detail">Candidatos eleitos</div>
                         </div>
                         <div class="top-value">{eleitos}</div>
@@ -608,7 +608,7 @@ def generate_html_report(data_dir: str = ".", output_file: str = "relatorio_elei
                             {''.join([f'''
                             <tr>
                                 <td>{i+1}</td>
-                                <td><strong>{e(str(row['MUNICÍPIO']))}</strong></td>
+                                <td><strong>{esc(str(row['MUNICÍPIO']))}</strong></td>
                                 <td><strong>{int(row['TOTAL_VOTOS']):,}</strong></td>
                                 <td>{int(row['ELEITORADO']):,}</td>
                                 <td>{int(row['NUM_CANDIDATOS'])}</td>
