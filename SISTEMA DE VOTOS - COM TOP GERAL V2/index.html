@@ -444,17 +444,20 @@
         return Number(n).toLocaleString('pt-BR');
     }
 
-    // ── Global data ──────────────────────────────────────────────
-    let RAW = null; // { candidato: [[ano,muni,bairro,votos,cargo,partido], ...], ... }
+    // ── Global pre-aggregated summary ────────────────────────────
+    // Loaded from dados_summary.json (~56 KB) instead of dados_bairros.json (17 MB).
+    // Structure: { filters: { "year|cargo": { votos, candidatos, partidos,
+    //   municipios, bairros, top_partidos, by_cargo, top_municipios,
+    //   by_ano, top_candidatos } } }
+    let SUMMARY = null;
 
-    // ── Load data ────────────────────────────────────────────────
+    // ── Load summary data ────────────────────────────────────────
     async function loadData() {
-        document.getElementById('loading-text').textContent = 'Carregando dados eleitorais… (pode levar alguns segundos)';
+        document.getElementById('loading-text').textContent = 'Carregando dashboard…';
         try {
-            const resp = await fetch('dados_bairros.json');
+            const resp = await fetch('dados_summary.json');
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            RAW = await resp.json();
-            document.getElementById('loading-text').textContent = 'Processando…';
+            SUMMARY = await resp.json();
             applyFilters();
             document.getElementById('loading-overlay').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
@@ -464,88 +467,32 @@
         }
     }
 
-    // ── Aggregate data for current filters ───────────────────────
-    function aggregate(yearFilter, cargoFilter) {
-        const byPartido  = {};
-        const byCargo    = {};
-        const byMuni     = {};
-        const byAno      = {};
-        const candidatos = {}; // candidato -> {votos, cargo, partido, muni, ano}
-        let totalVotos   = 0;
-        const partidos   = new Set();
-        const municipios = new Set();
-        const bairros    = new Set();
-        const candSet    = new Set();
-
-        for (const [cand, records] of Object.entries(RAW)) {
-            let candTotal = 0;
-            let candCargo = '', candPartido = '', candMuni = '', candAno = 0;
-
-            for (const r of records) {
-                const [ano, muni, bairro, votos, cargo, partido] = r;
-
-                if (yearFilter  && String(ano) !== yearFilter)  continue;
-                if (cargoFilter && cargo !== cargoFilter)        continue;
-
-                totalVotos += votos;
-                byPartido[partido]  = (byPartido[partido]  || 0) + votos;
-                byCargo[cargo]      = (byCargo[cargo]      || 0) + votos;
-                byMuni[muni]        = (byMuni[muni]        || 0) + votos;
-                byAno[ano]          = (byAno[ano]          || 0) + votos;
-                partidos.add(partido);
-                municipios.add(muni);
-                bairros.add(bairro);
-                candSet.add(cand);
-
-                candTotal += votos;
-                if (votos > 0) {
-                    candCargo   = cargo;
-                    candPartido = partido;
-                    if (!candMuni || votos > (candidatos[cand]?.votos || 0)) {
-                        candMuni = muni;
-                        candAno  = ano;
-                    }
-                }
-            }
-
-            if (candTotal > 0) {
-                candidatos[cand] = { votos: candTotal, cargo: candCargo, partido: candPartido, muni: candMuni, ano: candAno };
-            }
-        }
-
-        return { byPartido, byCargo, byMuni, byAno, candidatos,
-                 totalVotos, partidos, municipios, bairros, candSet };
-    }
-
-    // ── Render all ───────────────────────────────────────────────
+    // ── Apply filters — instant lookup, no re-processing ─────────
     function applyFilters() {
-        if (!RAW) return;
+        if (!SUMMARY) return;
         const yearFilter  = document.getElementById('filter-year').value;
         const cargoFilter = document.getElementById('filter-cargo').value;
-
-        const d = aggregate(yearFilter, cargoFilter);
+        const key = `${yearFilter}|${cargoFilter}`;
+        const d   = SUMMARY.filters[key];
+        if (!d) return;
 
         // Stats cards
-        document.getElementById('stat-votos').textContent      = fmt(d.totalVotos);
-        document.getElementById('stat-candidatos').textContent = fmt(d.candSet.size);
-        document.getElementById('stat-partidos').textContent   = d.partidos.size;
-        document.getElementById('stat-municipios').textContent = d.municipios.size;
-        document.getElementById('stat-bairros').textContent    = fmt(d.bairros.size);
+        document.getElementById('stat-votos').textContent      = fmt(d.votos);
+        document.getElementById('stat-candidatos').textContent = fmt(d.candidatos);
+        document.getElementById('stat-partidos').textContent   = d.partidos;
+        document.getElementById('stat-municipios').textContent = d.municipios;
+        document.getElementById('stat-bairros').textContent    = fmt(d.bairros);
 
-        renderPartidos(d.byPartido);
-        renderCargos(d.byCargo);
-        renderMunicipios(d.byMuni);
-        renderAnos(d.byAno, yearFilter);
-        renderTopCandidatos(d.candidatos, d.totalVotos);
-    }
-
-    function top(obj, n) {
-        return Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+        renderPartidos(d.top_partidos);
+        renderCargos(d.by_cargo);
+        renderMunicipios(d.top_municipios);
+        renderAnos(d.by_ano, yearFilter);
+        renderTopCandidatos(d.top_candidatos);
     }
 
     // ── Partidos bar chart ────────────────────────────────────────
-    function renderPartidos(byPartido) {
-        const data = top(byPartido, 10);
+    // data: [[partido, votos], ...]
+    function renderPartidos(data) {
         destroyChart('partidos');
         const ctx = document.getElementById('chart-partidos').getContext('2d');
         charts.partidos = new Chart(ctx, {
@@ -575,8 +522,8 @@
     }
 
     // ── Cargos doughnut chart ─────────────────────────────────────
-    function renderCargos(byCargo) {
-        const data = top(byCargo, 10);
+    // data: [[cargo, votos], ...]
+    function renderCargos(data) {
         destroyChart('cargos');
         const ctx = document.getElementById('chart-cargos').getContext('2d');
         charts.cargos = new Chart(ctx, {
@@ -602,9 +549,9 @@
         });
     }
 
-    // ── Municípios bar chart ──────────────────────────────────────
-    function renderMunicipios(byMuni) {
-        const data = top(byMuni, 10);
+    // ── Municípios horizontal bar chart ───────────────────────────
+    // data: [[muni, votos], ...]
+    function renderMunicipios(data) {
         destroyChart('municipios');
         const ctx = document.getElementById('chart-municipios').getContext('2d');
         charts.municipios = new Chart(ctx, {
@@ -634,15 +581,16 @@
         });
     }
 
-    // ── Evolução por ano line chart ───────────────────────────────
+    // ── Evolução por ano chart ────────────────────────────────────
+    // byAno: [[ano, votos], ...]
     function renderAnos(byAno, yearFilter) {
-        const allYears = [2016, 2018, 2020, 2022, 2024];
         destroyChart('anos');
         const ctx = document.getElementById('chart-anos').getContext('2d');
 
         if (yearFilter) {
-            // Quando um ano específico está selecionado, mostrar apenas aquele ano como barra
-            const val = byAno[parseInt(yearFilter)] || 0;
+            // Ano específico selecionado: exibir como barra única
+            const entry = byAno.find(([y]) => String(y) === yearFilter);
+            const val   = entry ? entry[1] : 0;
             charts.anos = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -665,14 +613,13 @@
             return;
         }
 
-        const vals = allYears.map(y => byAno[y] || 0);
         charts.anos = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: allYears,
+                labels: byAno.map(([y]) => y),
                 datasets: [{
                     label: 'Total de Votos',
-                    data: vals,
+                    data: byAno.map(([, v]) => v),
                     borderColor: '#3fb950',
                     backgroundColor: 'rgba(63,185,80,0.1)',
                     tension: 0.4,
@@ -693,37 +640,34 @@
     }
 
     // ── Top candidatos table ──────────────────────────────────────
-    function renderTopCandidatos(candidatos, totalVotos) {
-        const sorted = Object.entries(candidatos)
-            .sort((a, b) => b[1].votos - a[1].votos)
-            .slice(0, 20);
+    // topCands: [[name, {v, c, p, m, a}], ...]
+    function renderTopCandidatos(topCands) {
+        const maxVotos = topCands.length > 0 ? topCands[0][1].v : 1;
+        const tbody    = document.getElementById('top-tbody');
 
-        const maxVotos = sorted.length > 0 ? sorted[0][1].votos : 1;
-        const tbody = document.getElementById('top-tbody');
-
-        tbody.innerHTML = sorted.map(([name, info], i) => {
+        tbody.innerHTML = topCands.map(([name, info], i) => {
             const rank = i + 1;
             const cls  = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : '';
-            const pct  = Math.round((info.votos / maxVotos) * 100);
+            const pct  = Math.round((info.v / maxVotos) * 100);
             return `<tr>
                 <td><span class="rank-badge ${cls}">${rank}</span></td>
                 <td><strong>${esc(name)}</strong></td>
-                <td><span class="badge-partido">${esc(info.partido)}</span></td>
-                <td><span class="badge-cargo">${esc(info.cargo)}</span></td>
-                <td>${esc(info.muni)}</td>
-                <td>${info.ano || '—'}</td>
+                <td><span class="badge-partido">${esc(info.p)}</span></td>
+                <td><span class="badge-cargo">${esc(info.c)}</span></td>
+                <td>${esc(info.m)}</td>
+                <td>${info.a || '—'}</td>
                 <td>
                     <div class="vote-bar-wrap">
                         <div class="vote-bar-bg">
                             <div class="vote-bar-fill" style="width:${pct}%"></div>
                         </div>
-                        <span class="vote-num">${fmt(info.votos)}</span>
+                        <span class="vote-num">${fmt(info.v)}</span>
                     </div>
                 </td>
             </tr>`;
         }).join('');
 
-        if (sorted.length === 0) {
+        if (topCands.length === 0) {
             tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#8b949e;">
                 Nenhum dado encontrado para os filtros selecionados.</td></tr>`;
         }
